@@ -50,7 +50,7 @@ int main(){
 
     dbn->pretrain(samples, 10);
 
-    //4. Train the SVM
+    //4. Fine tune the DBN
 
     auto ft_error = dbn->fine_tune(
         samples, labels,
