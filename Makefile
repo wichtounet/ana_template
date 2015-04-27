@@ -2,10 +2,13 @@ default: release
 
 .PHONY: default release debug all clean
 
+CXX=g++-4.9
+LD=g++-4.9
+
 include make-utils/flags.mk
 include make-utils/cpp-utils.mk
 
-CXX_FLAGS += -Idll/include -Idll/etl/include -Idll/etl/lib/include -Imnist/include -std=c++1y -stdlib=libc++
+CXX_FLAGS += -Idll/include -Idll/etl/include -Idll/etl/lib/include -Imnist/include -std=c++1y
 LD_FLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -ljpeg -lpthread
 
 $(eval $(call auto_folder_compile,src))
