@@ -39,6 +39,14 @@ int main(){
 
     auto dbn = std::make_unique<dbn_t>();
 
+    //1.1 Configuration
+
+    //dbn->layer<0>().learning_rate = 0.1;
+    //dbn->layer<0>().momentum = 0.1;
+    //dbn->layer<1>().learning_rate = 0.1;
+    //dbn->layer<1>().momentum = 0.1;
+    //...
+
     //2. Read dataset
 
     std::vector<std::vector<double>> samples;     //All the samples
