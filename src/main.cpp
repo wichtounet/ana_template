@@ -25,7 +25,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
             , 500               //Number of hidden units
             , dll::momentum
             , dll::batch_size<25>
-            //, dll::parallel // Comment this line to use only 1 thread
+            , dll::parallel // Comment this line to use only 1 thread
             , dll::init_weights
             , dll::weight_decay<>
             , dll::visible<dll::unit_type::GAUSSIAN>
