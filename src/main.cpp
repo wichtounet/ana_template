@@ -55,7 +55,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
 
 std::size_t count_distinct(std::vector<std::size_t> v){
     std::sort(v.begin(), v.end());
-    return std::distance(std::unique(v.begin(), v.end()), v.begin());
+    return std::distance(v.begin(), std::unique(v.begin(), v.end()));
 }
 
 int main(int argc, char* argv[]){
@@ -133,22 +133,22 @@ void handle(const std::string& file, std::vector<std::string>& files, const std:
                         continue;
                     }
 
-                    handle(file, files, std::string(entry->d_name), extension);
+                    handle(file, files, line + "/" + std::string(entry->d_name), extension);
                 }
             } else {
-                printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+                printf("error: 1: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
             }
         } else if(S_ISREG(buffer.st_mode)){
             if(ends_with(line, extension)){
                 files.push_back(line);
             } else {
-                printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+                printf("error: 2: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
             }
         } else {
-            printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+            printf("error: 3: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
         }
     } else {
-        printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+        printf("error: 4: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
     }
 }
 
@@ -299,6 +299,8 @@ void read_labels(const std::string& file, std::vector<std::size_t>& labels){
 
         raw_labels.push_back(mapper[line]);
     }
+
+    std::cout << mapper.size() << std::endl;
 
     std::cout << raw_labels.size() << " raw labels were read" << std::endl;
 
