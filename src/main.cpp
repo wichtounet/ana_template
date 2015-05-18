@@ -10,7 +10,11 @@
 
 #include "cpp_utils/data.hpp"
 
-void read_data(const std::string& file, std::vector<std::vector<float>>& samples, std::vector<std::size_t>& labels);
+using sample_t = std::vector<float>;
+
+void read_data(
+    const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
+    std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels);
 
 static constexpr const std::size_t N = 11;
 static constexpr const std::size_t Features = 42;
@@ -45,12 +49,19 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
         >::rbm_t>
     >::dbn_t;
 
+std::size_t count_distinct(std::vector<std::size_t> v){
+    std::sort(v.begin(), v.end());
+    return std::distance(std::unique(v.begin(), v.end()), v.begin());
+}
+
 int main(int argc, char* argv[]){
-    if(argc < 2){
+    if(argc < 4){
         std::cout << "Not enough arguments" << std::endl;
     }
 
-    std::string file(argv[1]);
+    std::string pt_samples_file(argv[1]);
+    std::string ft_samples_file(argv[2]);
+    std::string ft_labels_file(argv[3]);
 
     //1. Create the DBN
 
@@ -66,30 +77,83 @@ int main(int argc, char* argv[]){
 
     //2. Read dataset
 
-    std::vector<std::vector<float>> samples;     //All the samples
-    std::vector<std::size_t> labels;              //All the labels
+    std::vector<sample_t> pt_samples;       //The pretraining samples
+    std::vector<sample_t> ft_samples;       //The finetuning samples
+    std::vector<std::size_t> ft_labels;     //The finetuning labels
 
-    read_data(file, samples, labels);
+    read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels);
 
-    //3. Train the DBN layers for 100 epochs
+    //3. Train the DBN layers for N epochs
 
-    dbn->pretrain(samples, 10);
+    //dbn->pretrain(pt_samples, 10);
 
-    //4. Fine tune the DBN
+    ////4. Fine tune the DBN
 
     //auto ft_error = dbn->fine_tune(
-        //samples, labels,
-        //10,  //Number of labels
-        //50); //number of epochs
+        //ft_samples, ft_labels,
+        //count_distinct(ft_labels),  //Number of labels
+        //50);                        //number of epochs
 
-    //5. Store the file if you want to save it for later
+    ////5. Store the file if you want to save it for later
 
-    dbn->store("file.dat"); //Store to file
+    //dbn->store("file.dat"); //Store to file
 
     return 0;
 }
 
-void read_data(const std::string& file, std::vector<std::vector<float>>& samples, std::vector<std::size_t>&){
+bool ends_with(const std::string& file, const std::string& extension){
+    auto extension_length = extension.size();
+
+    if(file.size() <= extension_length){
+        return false;
+    }
+
+    return std::string(file.begin() + file.size() - extension_length, file.end()) == extension;
+}
+
+void handle(const std::string& file, std::vector<std::string>& files, const std::string& line, const std::string& extension){
+    struct stat buffer;
+
+    if(stat(line.c_str(), &buffer) == 0){
+        if(S_ISDIR(buffer.st_mode)){
+            //TODO Recursively read files
+        } else if(S_ISREG(buffer.st_mode)){
+            if(ends_with(line, extension)){
+                files.push_back(line);
+            } else {
+                printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+            }
+        } else {
+            printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+        }
+    } else {
+        printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+    }
+}
+
+std::vector<std::string> get_files(const std::string& file, const std::string& extension){
+    std::vector<std::string> files;
+
+    std::ifstream istream(file);
+
+    std::string line;
+    while(istream >> line){
+        handle(file, files, line, extension);
+    }
+
+    return files;
+}
+
+void read_data(
+    const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
+    std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels){
+
+    auto pt_samples_files = get_files(pt_samples_file, "feat");
+
+
+}
+
+void read_data_old(const std::string& file, std::vector<std::vector<float>>& samples, std::vector<std::size_t>&){
     std::cout << "Read data from file \"" << file << "\"" << std::endl;
 
     std::vector<std::vector<float>> raw_samples;
