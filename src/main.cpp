@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include <unordered_map>
 
 #include <stdio.h>
 #include <dirent.h>
@@ -86,6 +87,10 @@ int main(int argc, char* argv[]){
 
     read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels);
 
+    auto labels = count_distinct(ft_labels);  //Number of labels
+
+    std::cout << "There are " << labels << " different labels" << std::endl;
+
     //3. Train the DBN layers for N epochs
 
     //dbn->pretrain(pt_samples, 10);
@@ -94,8 +99,8 @@ int main(int argc, char* argv[]){
 
     //auto ft_error = dbn->fine_tune(
         //ft_samples, ft_labels,
-        //count_distinct(ft_labels),  //Number of labels
-        //50);                        //number of epochs
+        //labels,                   //Number of labels
+        //50);                      //number of epochs
 
     ////5. Store the file if you want to save it for later
 
@@ -160,28 +165,54 @@ std::vector<std::string> get_files(const std::string& file, const std::string& e
     return files;
 }
 
-void read_samples(const std::string& file, std::vector<std::vector<float>>& samples);
+void read_samples(const std::string& file, std::vector<sample_t>& samples);
+void read_labels(const std::string& file, std::vector<std::size_t>& samples);
 
 void read_data(
     const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
     std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels){
 
+    std::string feature_extension{"feat"};
+    std::string label_extension{"framelab"};
+
     //Extract the list of files from the description files
-    auto pt_samples_files = get_files(pt_samples_file, "feat");
-    auto ft_samples_files = get_files(ft_samples_file, "feat");
-    auto ft_labels_files = get_files(ft_labels_file, "framelab");
+    auto pt_samples_files = get_files(pt_samples_file, feature_extension);
+    auto ft_samples_files = get_files(ft_samples_file, feature_extension);
+    auto ft_labels_files = get_files(ft_labels_file, label_extension);
 
     for(auto& file : pt_samples_files){
         read_samples(file, pt_samples);
     }
 
+    for(auto& s_file : ft_samples_files){
+        bool found = false;
+
+        for(auto& l_file : ft_labels_files){
+            if(std::string(s_file.begin(), s_file.begin() + s_file.size() - feature_extension.size()) ==
+                    std::string(l_file.begin(), l_file.begin() + l_file.size() - label_extension.size())){
+
+                read_samples(s_file, ft_samples);
+                read_labels(l_file, ft_labels);
+
+                found = true;
+                break;
+            }
+        }
+
+        if(!found){
+            std::cout << "No equivalent found for " << s_file << std::endl;
+        }
+    }
+
     std::cout << "A total of " << pt_samples.size() << " window samples were read for pretraining" << std::endl;
+    std::cout << "A total of " << ft_samples.size() << " window samples were read for fine-tuning" << std::endl;
+    std::cout << "A total of " << ft_labels.size() << " window labels were read for pretraining" << std::endl;
 }
 
-void read_samples(const std::string& file, std::vector<std::vector<float>>& samples){
+void read_samples(const std::string& file, std::vector<sample_t>& samples){
     std::cout << "Read samples from file \"" << file << "\"" << std::endl;
 
-    std::vector<std::vector<float>> raw_samples;
+    std::vector<sample_t> raw_samples;
 
     std::ifstream infile(file);
 
@@ -231,22 +262,13 @@ void read_samples(const std::string& file, std::vector<std::vector<float>>& samp
                 sample[i] /= std;
             }
         }
-
-        if(i == 20){
-            for(auto& feature : raw_samples[i]){
-                std::cout << feature << ",";
-            }
-            std::cout << std::endl;
-        }
     }
-
-    std::cout << "Each feature was normalized to zero-mean and unit-variance" << std::endl;
 
     static constexpr const std::size_t Left = (N - 1) / 2;
     static constexpr const std::size_t Right = (N - 1) / 2;
 
     for(std::size_t i = Left; i < raw_samples.size() - Right; i += Stride){
-        std::vector<float> sample;
+        sample_t sample;
 
         for(std::size_t x = 0; x < N; ++x){
             for(auto& feature : raw_samples[i - Left + x]){
@@ -258,6 +280,34 @@ void read_samples(const std::string& file, std::vector<std::vector<float>>& samp
     }
 
     std::cout << samples.size() << " window samples were read" << std::endl;
+}
 
-    //TODO Read labels
+std::unordered_map<std::string, std::size_t> mapper;
+
+void read_labels(const std::string& file, std::vector<std::size_t>& labels){
+    std::cout << "Read labels from file \"" << file << "\"" << std::endl;
+
+    std::vector<std::size_t> raw_labels;
+
+    std::ifstream infile(file);
+
+    std::string line;
+    while (std::getline(infile, line)){
+        if(!mapper.count(line)){
+            mapper[line] = mapper.size();
+        }
+
+        raw_labels.push_back(mapper[line]);
+    }
+
+    std::cout << raw_labels.size() << " raw labels were read" << std::endl;
+
+    static constexpr const std::size_t Left = (N - 1) / 2;
+    static constexpr const std::size_t Right = (N - 1) / 2;
+
+    for(std::size_t i = Left; i < raw_labels.size() - Right; i += Stride){
+        labels.push_back(raw_labels[i]);
+    }
+
+    std::cout << labels.size() << " window labels were read" << std::endl;
 }
