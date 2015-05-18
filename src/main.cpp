@@ -4,6 +4,9 @@
 #include <string>
 #include <fstream>
 
+#include <stdio.h>
+#include <dirent.h>
+
 #include "dll/rbm.hpp"
 #include "dll/dbn.hpp"
 #include "dll/test.hpp"
@@ -116,7 +119,20 @@ void handle(const std::string& file, std::vector<std::string>& files, const std:
 
     if(stat(line.c_str(), &buffer) == 0){
         if(S_ISDIR(buffer.st_mode)){
-            //TODO Recursively read files
+            struct dirent* entry;
+            DIR* dp = opendir(line.c_str());
+
+            if(dp){
+                while((entry = readdir(dp))){
+                    if(std::string(entry->d_name) == "." || std::string(entry->d_name) == ".."){
+                        continue;
+                    }
+
+                    handle(file, files, std::string(entry->d_name), extension);
+                }
+            } else {
+                printf("error: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+            }
         } else if(S_ISREG(buffer.st_mode)){
             if(ends_with(line, extension)){
                 files.push_back(line);
@@ -144,17 +160,26 @@ std::vector<std::string> get_files(const std::string& file, const std::string& e
     return files;
 }
 
+void read_samples(const std::string& file, std::vector<std::vector<float>>& samples);
+
 void read_data(
     const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
     std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels){
 
+    //Extract the list of files from the description files
     auto pt_samples_files = get_files(pt_samples_file, "feat");
+    auto ft_samples_files = get_files(ft_samples_file, "feat");
+    auto ft_labels_files = get_files(ft_labels_file, "framelab");
 
+    for(auto& file : pt_samples_files){
+        read_samples(file, pt_samples);
+    }
 
+    std::cout << "A total of " << pt_samples.size() << " window samples were read for pretraining" << std::endl;
 }
 
-void read_data_old(const std::string& file, std::vector<std::vector<float>>& samples, std::vector<std::size_t>&){
-    std::cout << "Read data from file \"" << file << "\"" << std::endl;
+void read_samples(const std::string& file, std::vector<std::vector<float>>& samples){
+    std::cout << "Read samples from file \"" << file << "\"" << std::endl;
 
     std::vector<std::vector<float>> raw_samples;
 
