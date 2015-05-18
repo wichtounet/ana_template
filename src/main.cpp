@@ -93,18 +93,20 @@ int main(int argc, char* argv[]){
 
     //3. Train the DBN layers for N epochs
 
-    //dbn->pretrain(pt_samples, 10);
+    dbn->pretrain(pt_samples, 10);
 
-    ////4. Fine tune the DBN
+    //4. Fine tune the DBN for M epochs
 
-    //auto ft_error = dbn->fine_tune(
-        //ft_samples, ft_labels,
-        //labels,                   //Number of labels
-        //50);                      //number of epochs
+    auto ft_error = dbn->fine_tune(
+        ft_samples, ft_labels,
+        labels,                   //Number of labels
+        50);                      //number of epochs
 
-    ////5. Store the file if you want to save it for later
+    std::cout << "Fine-tuning error: " << ft_error << std::endl;
 
-    //dbn->store("file.dat"); //Store to file
+    //5. Store the file if you want to save it for later
+
+    dbn->store("file.dat"); //Store to file
 
     return 0;
 }
