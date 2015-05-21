@@ -117,17 +117,23 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
-bool ends_with(const std::string& file, const std::string& extension){
-    auto extension_length = extension.size();
+bool ends_with(const std::string& file, const std::vector<std::string>& extensions){
+    for(auto& extension : extensions){
+        auto extension_length = extension.size();
 
-    if(file.size() <= extension_length){
-        return false;
+        if(file.size() <= extension_length){
+            continue;
+        }
+
+        if(std::string(file.begin() + file.size() - extension_length, file.end()) == extension){
+            return true;
+        }
     }
 
-    return std::string(file.begin() + file.size() - extension_length, file.end()) == extension;
+    return false;
 }
 
-void handle(const std::string& file, std::vector<std::string>& files, const std::string& line, const std::string& extension){
+void handle(const std::string& file, std::vector<std::string>& files, const std::string& line, const std::vector<std::string>& extension){
     struct stat buffer;
 
     if(stat(line.c_str(), &buffer) == 0){
@@ -160,7 +166,7 @@ void handle(const std::string& file, std::vector<std::string>& files, const std:
     }
 }
 
-std::vector<std::string> get_files(const std::string& file, const std::string& extension){
+std::vector<std::string> get_files(const std::string& file, const std::vector<std::string>& extension){
     std::vector<std::string> files;
 
     std::ifstream istream(file);
@@ -180,8 +186,8 @@ void read_data(
     const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
     std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels){
 
-    std::string feature_extension{"feat"};
-    std::string label_extension{"framelab"};
+    std::vector<std::string> feature_extension{"feat"};
+    std::vector<std::string> label_extension{"framelab", "3phnlab"};
 
     //Extract the list of files from the description files
     auto pt_samples_files = get_files(pt_samples_file, feature_extension);
