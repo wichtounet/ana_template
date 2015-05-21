@@ -71,13 +71,19 @@ int main(int argc, char* argv[]){
 
     auto dbn = std::make_unique<dbn_t>();
 
-    //1.1 Configuration
+    //1.1 Configuration of the pretraining
 
     //dbn->layer<0>().learning_rate = 0.1;
-    //dbn->layer<0>().momentum = 0.1;
+    dbn->layer<0>().initial_momentum = 0.9;
+    dbn->layer<0>().final_momentum = 0.9;
     //dbn->layer<1>().learning_rate = 0.1;
-    //dbn->layer<1>().momentum = 0.1;
+    dbn->layer<1>().initial_momentum = 0.9;
+    dbn->layer<1>().final_momentum = 0.9;
     //...
+
+    //1.2 Configuration of the fine-tuning
+
+    dbn->learning_rate = 0.77;
 
     //2. Read dataset
 
