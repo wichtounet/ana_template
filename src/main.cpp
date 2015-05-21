@@ -133,6 +133,22 @@ bool ends_with(const std::string& file, const std::vector<std::string>& extensio
     return false;
 }
 
+std::string remove_extension(const std::string& file, const std::vector<std::string>& extensions){
+    for(auto& extension : extensions){
+        auto extension_length = extension.size();
+
+        if(file.size() <= extension_length){
+            continue;
+        }
+
+        if(std::string(file.begin() + file.size() - extension_length, file.end()) == extension){
+            return std::string(file.begin(), file.begin() + file.size() - extension_length);
+        }
+    }
+
+    return file;
+}
+
 void handle(const std::string& file, std::vector<std::string>& files, const std::string& line, const std::vector<std::string>& extension){
     struct stat buffer;
 
@@ -202,14 +218,39 @@ void read_data(
         bool found = false;
 
         for(auto& l_file : ft_labels_files){
-            if(std::string(s_file.begin(), s_file.begin() + s_file.size() - feature_extension.size()) ==
-                    std::string(l_file.begin(), l_file.begin() + l_file.size() - label_extension.size())){
+            auto clean_s = remove_extension(s_file, feature_extension);
+            auto clean_l = remove_extension(l_file, label_extension);
 
+            if(clean_l == clean_s){
                 read_samples(s_file, ft_samples);
                 read_labels(l_file, ft_labels);
 
                 found = true;
                 break;
+            }
+
+            if(std::count(clean_s.begin(), clean_s.end(), '/') > 1 && std::count(clean_l.begin(), clean_l.end(), '/') > 1){
+                auto last_s = clean_s.find_last_of('/');
+                auto last_l = clean_l.find_last_of('/');
+
+                auto prelast_s = clean_s.find_last_of('/', last_s - 1);
+                auto prelast_l = clean_l.find_last_of('/', last_l - 1);
+
+                auto clean_clean_s =
+                        std::string(clean_s.begin(), clean_s.begin() + prelast_s + 1)
+                    +   std::string(clean_s.begin() + last_s, clean_s.end());
+
+                auto clean_clean_l =
+                        std::string(clean_l.begin(), clean_l.begin() + prelast_l + 1)
+                    +   std::string(clean_l.begin() + last_l, clean_l.end());
+
+                if(clean_clean_l == clean_clean_s){
+                    read_samples(s_file, ft_samples);
+                    read_labels(l_file, ft_labels);
+
+                    found = true;
+                    break;
+                }
             }
         }
 
@@ -313,8 +354,6 @@ void read_labels(const std::string& file, std::vector<std::size_t>& labels){
 
         raw_labels.push_back(mapper[line]);
     }
-
-    std::cout << mapper.size() << std::endl;
 
     std::cout << raw_labels.size() << " raw labels were read" << std::endl;
 
