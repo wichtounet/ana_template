@@ -5,13 +5,7 @@
 //  http://opensource.org/licenses/MIT)
 //=======================================================================
 
-#include <vector>
 #include <iostream>
-#include <string>
-#include <fstream>
-
-#include <stdio.h>
-#include <dirent.h>
 
 #include "dll/rbm.hpp"
 #include "dll/dbn.hpp"
@@ -23,7 +17,6 @@ static constexpr const std::size_t N = 11;
 static constexpr const std::size_t Features = 42;
 static constexpr const std::size_t Stride = 11;
 
-#include "io.hpp"
 #include "data.hpp"
 
 //0. Configure the DBN
