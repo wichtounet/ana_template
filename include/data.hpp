@@ -11,9 +11,11 @@
 #include <vector>
 #include <string>
 
+#include "etl/etl.hpp"
+
 namespace ana {
 
-using sample_t = std::vector<float>;
+using sample_t = etl::dyn_vector<float>;
 
 void read_data(
     const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,

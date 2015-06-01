@@ -68,7 +68,7 @@ void read_labels(const std::string& file, std::vector<std::size_t>& labels){
 void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samples){
     std::cout << "Read samples from file \"" << file << "\"" << std::endl;
 
-    std::vector<ana::sample_t> raw_samples;
+    std::vector<std::vector<float>> raw_samples;
 
     std::ifstream infile(file);
 
@@ -124,11 +124,12 @@ void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samp
     static constexpr const std::size_t Right = (N - 1) / 2;
 
     for(std::size_t i = Left; i < raw_samples.size() - Right; i += Stride){
-        ana::sample_t sample;
+        ana::sample_t sample(Features * N);
 
+        std::size_t j = 0;
         for(std::size_t x = 0; x < N; ++x){
             for(auto& feature : raw_samples[i - Left + x]){
-                sample.push_back(feature);
+                sample[j++] = feature;
             }
         }
 
