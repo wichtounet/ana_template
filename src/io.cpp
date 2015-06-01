@@ -5,9 +5,7 @@
 //  http://opensource.org/licenses/MIT)
 //=======================================================================
 
-#include <vector>
 #include <iostream>
-#include <string>
 #include <fstream>
 
 #include <dirent.h>

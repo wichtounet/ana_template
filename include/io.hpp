@@ -8,6 +8,9 @@
 #ifndef ANA_TEMPLATE_IO_HPP
 #define ANA_TEMPLATE_IO_HPP
 
+#include <vector>
+#include <string>
+
 namespace ana {
 
 std::vector<std::string> get_files(const std::string& file, const std::vector<std::string>& extension);
