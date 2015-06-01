@@ -11,6 +11,8 @@ include make-utils/cpp-utils.mk
 CXX_FLAGS += -Idll/include -Idll/etl/include -Idll/etl/lib/include -Imnist/include -std=c++1y
 LD_FLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -ljpeg -lpthread
 
+CXX_FLAGS += -DETL_VECTORIZE_FULL
+
 $(eval $(call auto_folder_compile,src))
 $(eval $(call auto_add_executable,main))
 
