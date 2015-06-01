@@ -2,3 +2,7 @@ release
 release_debug
 debug
 *.dat
+dataset
+first
+second
+third
