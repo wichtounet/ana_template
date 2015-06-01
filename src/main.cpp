@@ -1,8 +1,6 @@
 //=======================================================================
 // Copyright Baptiste Wicht 2015.
-// Distributed under the MIT License.
-// (See accompanying file LICENSE or copy at
-//  http://opensource.org/licenses/MIT)
+// Distributed under the MIT License.  // (See accompanying file LICENSE or copy at //  http://opensource.org/licenses/MIT)
 //=======================================================================
 
 #include <iostream>
@@ -14,7 +12,9 @@
 #include "cpp_utils/data.hpp"
 
 #include "config.hpp" //Edit this file to change the configuration
+#include "io.hpp"
 #include "data.hpp"
+#include "sample_iterator.hpp"
 
 //0. Configure the DBN
 
@@ -85,9 +85,9 @@ int main(int argc, char* argv[]){
 
     std::vector<ana::sample_t> pt_samples;       //The pretraining samples
     std::vector<ana::sample_t> ft_samples;       //The finetuning samples
-    std::vector<std::size_t> ft_labels;     //The finetuning labels
+    std::vector<std::size_t> ft_labels;          //The finetuning labels
 
-    ana::read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels);
+    ana::read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels, lazy_pt);
 
     auto labels = count_distinct(ft_labels);  //Number of labels
 
@@ -95,7 +95,17 @@ int main(int argc, char* argv[]){
 
     //3. Train the DBN layers for N epochs
 
-    dbn->pretrain(pt_samples, 10);
+    if(lazy_pt){
+        std::vector<std::string> feature_extension{"feat"};
+        auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
+
+        ana::sample_iterator it(pt_samples_files);
+        ana::sample_iterator end(pt_samples_files, pt_samples_files.size());
+
+        dbn->pretrain(it, end, 10);
+    } else {
+        dbn->pretrain(pt_samples, 10);
+    }
 
     //4. Fine tune the DBN for M epochs
 

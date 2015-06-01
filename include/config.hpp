@@ -11,5 +11,6 @@
 static constexpr const std::size_t N = 11;
 static constexpr const std::size_t Features = 42;
 static constexpr const std::size_t Stride = 11;
+static constexpr const bool lazy_pt = true;
 
 #endif

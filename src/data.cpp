@@ -33,7 +33,39 @@ std::string remove_extension(const std::string& file, const std::vector<std::str
     return file;
 }
 
-void read_samples(const std::string& file, std::vector<ana::sample_t>& samples){
+std::unordered_map<std::string, std::size_t> mapper;
+
+void read_labels(const std::string& file, std::vector<std::size_t>& labels){
+    std::cout << "Read labels from file \"" << file << "\"" << std::endl;
+
+    std::vector<std::size_t> raw_labels;
+
+    std::ifstream infile(file);
+
+    std::string line;
+    while (std::getline(infile, line)){
+        if(!mapper.count(line)){
+            mapper[line] = mapper.size();
+        }
+
+        raw_labels.push_back(mapper[line]);
+    }
+
+    std::cout << raw_labels.size() << " raw labels were read" << std::endl;
+
+    static constexpr const std::size_t Left = (N - 1) / 2;
+    static constexpr const std::size_t Right = (N - 1) / 2;
+
+    for(std::size_t i = Left; i < raw_labels.size() - Right; i += Stride){
+        labels.push_back(raw_labels[i]);
+    }
+
+    std::cout << labels.size() << " window labels were read" << std::endl;
+}
+
+} //end of anonymous namespace
+
+void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samples){
     std::cout << "Read samples from file \"" << file << "\"" << std::endl;
 
     std::vector<ana::sample_t> raw_samples;
@@ -106,53 +138,26 @@ void read_samples(const std::string& file, std::vector<ana::sample_t>& samples){
     std::cout << samples.size() << " window samples were read" << std::endl;
 }
 
-std::unordered_map<std::string, std::size_t> mapper;
-
-void read_labels(const std::string& file, std::vector<std::size_t>& labels){
-    std::cout << "Read labels from file \"" << file << "\"" << std::endl;
-
-    std::vector<std::size_t> raw_labels;
-
-    std::ifstream infile(file);
-
-    std::string line;
-    while (std::getline(infile, line)){
-        if(!mapper.count(line)){
-            mapper[line] = mapper.size();
-        }
-
-        raw_labels.push_back(mapper[line]);
-    }
-
-    std::cout << raw_labels.size() << " raw labels were read" << std::endl;
-
-    static constexpr const std::size_t Left = (N - 1) / 2;
-    static constexpr const std::size_t Right = (N - 1) / 2;
-
-    for(std::size_t i = Left; i < raw_labels.size() - Right; i += Stride){
-        labels.push_back(raw_labels[i]);
-    }
-
-    std::cout << labels.size() << " window labels were read" << std::endl;
-}
-
-} //end of anonymous namespace
-
 void ana::read_data(
     const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
-    std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels){
+    std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels,
+    bool lazy_pretraining){
 
     std::vector<std::string> feature_extension{"feat"};
     std::vector<std::string> label_extension{"framelab", "3phnlab"};
 
+    //If not lazy, read the pretraining files
+    if(!lazy_pretraining){
+        auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
+
+        for(auto& file : pt_samples_files){
+            read_samples(file, pt_samples);
+        }
+    }
+
     //Extract the list of files from the description files
-    auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
     auto ft_samples_files = ana::get_files(ft_samples_file, feature_extension);
     auto ft_labels_files = ana::get_files(ft_labels_file, label_extension);
-
-    for(auto& file : pt_samples_files){
-        read_samples(file, pt_samples);
-    }
 
     for(auto& s_file : ft_samples_files){
         bool found = false;
