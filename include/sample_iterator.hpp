@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 
 #include "data.hpp"
 
@@ -22,6 +23,10 @@ struct sample_iterator : std::iterator<std::input_iterator_tag, ana::sample_t> {
     std::vector<ana::sample_t> samples;
     std::size_t current_sample = 0;
 
+    static std::string cached;
+    static std::vector<ana::sample_t> cache;
+    static std::mutex m;
+
     sample_iterator(const std::vector<std::string>& file_names, std::size_t i = 0)
             : file_names(file_names), current_file(i) {
         if(current_file < file_names.size()){
@@ -31,6 +36,20 @@ struct sample_iterator : std::iterator<std::input_iterator_tag, ana::sample_t> {
 
     sample_iterator(const sample_iterator& rhs) = default;
     sample_iterator& operator=(const sample_iterator& rhs) = default;
+
+    static void read_samples(const std::string& name, std::vector<ana::sample_t>& samples){
+        std::unique_lock<std::mutex> lock(m);
+
+        if(!cache.empty() && cached == name){
+            samples = cache;
+        } else {
+            cache.clear();
+            ana::read_samples(name, cache);
+
+            samples = cache;
+            cached = name;
+        }
+    }
 
     bool operator==(const sample_iterator& rhs){
         if(current_file == file_names.size() && current_file == rhs.current_file){
@@ -58,7 +77,6 @@ struct sample_iterator : std::iterator<std::input_iterator_tag, ana::sample_t> {
             current_sample = 0;
 
             if(current_file < file_names.size()){
-                samples.clear();
                 read_samples(file_names[current_file], samples);
             }
         } else {

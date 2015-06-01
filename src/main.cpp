@@ -43,8 +43,9 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
             dll::batch_size<25>,
             dll::hidden<dll::unit_type::SOFTMAX>
         >::rbm_t>
-    , dll::memory     //Reduce memory consumption of the DBN (by using lazy iterators)
-    , dll::parallel   //Allow the DBN to use threads
+    , dll::memory               //Reduce memory consumption of the DBN (by using lazy iterators)
+    , dll::parallel             //Allow the DBN to use threads
+    , dll::batch_size<1>        // Save some file readings
     >::dbn_t;
 
 namespace {
@@ -124,3 +125,7 @@ int main(int argc, char* argv[]){
 
     return 0;
 }
+
+std::string ana::sample_iterator::cached;
+std::vector<ana::sample_t> ana::sample_iterator::cache;
+std::mutex ana::sample_iterator::m;
