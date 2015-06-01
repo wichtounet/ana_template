@@ -12,7 +12,7 @@ CXX_FLAGS += -Idll/include -Idll/etl/include -Idll/etl/lib/include -Imnist/inclu
 LD_FLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -ljpeg -lpthread
 
 $(eval $(call auto_folder_compile,src))
-$(eval $(call add_src_executable,main,main.cpp))
+$(eval $(call auto_add_executable,main))
 
 release: release/bin/main
 release_debug: release_debug/bin/main
