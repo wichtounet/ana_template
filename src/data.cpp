@@ -11,12 +11,9 @@
 #include <unordered_map>
 #include <sstream>
 
+#include "config.hpp"
 #include "io.hpp"
 #include "data.hpp"
-
-static constexpr const std::size_t N = 11;
-static constexpr const std::size_t Features = 42;
-static constexpr const std::size_t Stride = 11;
 
 namespace {
 

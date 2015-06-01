@@ -13,10 +13,7 @@
 
 #include "cpp_utils/data.hpp"
 
-static constexpr const std::size_t N = 11;
-static constexpr const std::size_t Features = 42;
-static constexpr const std::size_t Stride = 11;
-
+#include "config.hpp" //Edit this file to change the configuration
 #include "data.hpp"
 
 //0. Configure the DBN
