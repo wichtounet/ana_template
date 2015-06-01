@@ -15,8 +15,6 @@
 
 #include "io.hpp"
 
-using sample_t = std::vector<float>;
-
 namespace {
 
 bool ends_with(const std::string& file, const std::vector<std::string>& extensions){
