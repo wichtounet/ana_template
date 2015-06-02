@@ -84,7 +84,7 @@ int main(int argc, char* argv[]){
 
     //1.2 Configuration of the fine-tuning
 
-    dbn->learning_rate = 0.77;
+    dbn->learning_rate = 0.05;
 
     //2. Read dataset
 
