@@ -8,6 +8,7 @@
 #include "dll/rbm.hpp"
 #include "dll/dbn.hpp"
 #include "dll/test.hpp"
+#include "dll/stochastic_gradient_descent.hpp"
 
 #include "cpp_utils/data.hpp"
 
@@ -15,7 +16,7 @@
 #include "io.hpp"
 #include "data.hpp"
 #include "sample_iterator.hpp"
-#include "dll/stochastic_gradient_descent.hpp"
+#include "label_iterator.hpp"
 
 //0. Configure the DBN
 
@@ -44,10 +45,12 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
             dll::batch_size<25>,
             dll::hidden<dll::unit_type::SOFTMAX>
         >::rbm_t>
-    , dll::memory               //Reduce memory consumption of the DBN (by using lazy iterators)
-    , dll::parallel             //Allow the DBN to use threads
-    , dll::batch_size<1>        // Save some file readings
-    , dll::trainer<dll::sgd_trainer>
+    , dll::memory                       //Reduce memory consumption of the DBN (by using lazy iterators)
+    , dll::parallel                     //Allow the DBN to use threads
+    , dll::batch_size<1>                //Save some file readings
+    , dll::trainer<dll::sgd_trainer>    //Use SGD
+    , dll::momentum                     //Use momentum for SGD
+    , dll::weight_decay<>               //Use L2 weight decay for SGD
     >::dbn_t;
 
 namespace {
@@ -92,7 +95,7 @@ int main(int argc, char* argv[]){
     std::vector<ana::sample_t> ft_samples;       //The finetuning samples
     std::vector<std::size_t> ft_labels;          //The finetuning labels
 
-    ana::read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels, lazy_pt);
+    ana::read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels, lazy_pt, lazy_ft);
 
     auto labels = count_distinct(ft_labels);  //Number of labels
 
@@ -114,12 +117,33 @@ int main(int argc, char* argv[]){
 
     //4. Fine tune the DBN for M epochs
 
-    auto ft_error = dbn->fine_tune(
-        ft_samples, ft_labels,
-        50,                   //Number of epochs
-        50);                  //Size of a mini-batch
+    if(lazy_ft){
+        std::vector<std::string> samples_files;
+        std::vector<std::string> labels_files;
 
-    std::cout << "Fine-tuning error: " << ft_error << std::endl;
+        //Collect the paired files
+        std::tie(samples_files, labels_files) = ana::get_paired_files(ft_samples_file, ft_labels_file);
+
+        ana::sample_iterator it(samples_files);
+        ana::sample_iterator end(samples_files, samples_files.size());
+
+        ana::label_iterator lit(labels_files);
+        ana::label_iterator lend(labels_files, labels_files.size());
+
+        auto ft_error = dbn->fine_tune(
+            it, end, lit, lend,
+            50,                   //Number of epochs
+            50);                  //Size of a mini-batch
+
+        std::cout << "Fine-tuning error: " << ft_error << std::endl;
+    } else {
+        auto ft_error = dbn->fine_tune(
+            ft_samples, ft_labels,
+            50,                   //Number of epochs
+            50);                  //Size of a mini-batch
+
+        std::cout << "Fine-tuning error: " << ft_error << std::endl;
+    }
 
     //5. Store the file if you want to save it for later
 
@@ -131,3 +155,7 @@ int main(int argc, char* argv[]){
 std::string ana::sample_iterator::cached;
 std::vector<ana::sample_t> ana::sample_iterator::cache;
 std::mutex ana::sample_iterator::m;
+
+std::string ana::label_iterator::cached;
+std::vector<ana::label_t> ana::label_iterator::cache;
+std::mutex ana::label_iterator::m;

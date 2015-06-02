@@ -33,9 +33,11 @@ std::string remove_extension(const std::string& file, const std::vector<std::str
     return file;
 }
 
+} //end of anonymous namespace
+
 std::unordered_map<std::string, std::size_t> mapper;
 
-void read_labels(const std::string& file, std::vector<std::size_t>& labels){
+void ana::read_labels(const std::string& file, std::vector<std::size_t>& labels){
     std::cout << "Read labels from file \"" << file << "\"" << std::endl;
 
     std::vector<std::size_t> raw_labels;
@@ -62,8 +64,6 @@ void read_labels(const std::string& file, std::vector<std::size_t>& labels){
 
     std::cout << labels.size() << " window labels were read" << std::endl;
 }
-
-} //end of anonymous namespace
 
 void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samples){
     std::cout << "Read samples from file \"" << file << "\"" << std::endl;
@@ -139,26 +139,16 @@ void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samp
     std::cout << samples.size() << " window samples were read" << std::endl;
 }
 
-void ana::read_data(
-    const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
-    std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels,
-    bool lazy_pretraining){
-
+std::pair<std::vector<std::string>, std::vector<std::string>> ana::get_paired_files(const std::string& ft_samples_file, const std::string& ft_labels_file){
     std::vector<std::string> feature_extension{"feat"};
     std::vector<std::string> label_extension{"framelab", "3phnlab"};
-
-    //If not lazy, read the pretraining files
-    if(!lazy_pretraining){
-        auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
-
-        for(auto& file : pt_samples_files){
-            read_samples(file, pt_samples);
-        }
-    }
 
     //Extract the list of files from the description files
     auto ft_samples_files = ana::get_files(ft_samples_file, feature_extension);
     auto ft_labels_files = ana::get_files(ft_labels_file, label_extension);
+
+    std::vector<std::string> samples_files;
+    std::vector<std::string> labels_files;
 
     for(auto& s_file : ft_samples_files){
         bool found = false;
@@ -168,8 +158,8 @@ void ana::read_data(
             auto clean_l = remove_extension(l_file, label_extension);
 
             if(clean_l == clean_s){
-                read_samples(s_file, ft_samples);
-                read_labels(l_file, ft_labels);
+                samples_files.push_back(s_file);
+                labels_files.push_back(l_file);
 
                 found = true;
                 break;
@@ -183,16 +173,16 @@ void ana::read_data(
                 auto prelast_l = clean_l.find_last_of('/', last_l - 1);
 
                 auto clean_clean_s =
-                        std::string(clean_s.begin(), clean_s.begin() + prelast_s + 1)
+                    std::string(clean_s.begin(), clean_s.begin() + prelast_s + 1)
                     +   std::string(clean_s.begin() + last_s, clean_s.end());
 
                 auto clean_clean_l =
-                        std::string(clean_l.begin(), clean_l.begin() + prelast_l + 1)
+                    std::string(clean_l.begin(), clean_l.begin() + prelast_l + 1)
                     +   std::string(clean_l.begin() + last_l, clean_l.end());
 
                 if(clean_clean_l == clean_clean_s){
-                    read_samples(s_file, ft_samples);
-                    read_labels(l_file, ft_labels);
+                    samples_files.push_back(s_file);
+                    labels_files.push_back(l_file);
 
                     found = true;
                     break;
@@ -202,6 +192,42 @@ void ana::read_data(
 
         if(!found){
             std::cout << "No equivalent found for " << s_file << std::endl;
+        }
+    }
+
+    return {samples_files, labels_files};
+}
+
+void ana::read_data(
+    const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file,
+    std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels,
+    bool lazy_pretraining, bool lazy_fine_tuning){
+
+    std::vector<std::string> feature_extension{"feat"};
+    std::vector<std::string> label_extension{"framelab", "3phnlab"};
+
+    //If not lazy, read the pretraining files
+    if(!lazy_pretraining){
+        auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
+
+        for(auto& file : pt_samples_files){
+            read_samples(file, pt_samples);
+        }
+    }
+
+    //If not lazy, read the fine-tuning files
+    if(!lazy_fine_tuning){
+        std::vector<std::string> samples_files;
+        std::vector<std::string> labels_files;
+
+        std::tie(samples_files, labels_files) = get_paired_files(ft_samples_file, ft_labels_file);
+
+        for(auto& samples_file : samples_files){
+            read_samples(samples_file, ft_samples);
+        }
+
+        for(auto& labels_file : labels_files){
+            read_labels(labels_file, ft_labels);
         }
     }
 
