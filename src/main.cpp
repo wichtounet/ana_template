@@ -116,8 +116,8 @@ int main(int argc, char* argv[]){
 
     auto ft_error = dbn->fine_tune(
         ft_samples, ft_labels,
-        labels,                   //Number of labels
-        50);                      //number of epochs
+        50,                   //Number of epochs
+        50);                  //Size of a mini-batch
 
     std::cout << "Fine-tuning error: " << ft_error << std::endl;
 
