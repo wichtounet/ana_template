@@ -15,6 +15,7 @@
 #include "io.hpp"
 #include "data.hpp"
 #include "sample_iterator.hpp"
+#include "dll/stochastic_gradient_descent.hpp"
 
 //0. Configure the DBN
 
@@ -46,6 +47,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
     , dll::memory               //Reduce memory consumption of the DBN (by using lazy iterators)
     , dll::parallel             //Allow the DBN to use threads
     , dll::batch_size<1>        // Save some file readings
+    , dll::trainer<dll::sgd_trainer>
     >::dbn_t;
 
 namespace {
