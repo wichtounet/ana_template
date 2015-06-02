@@ -23,34 +23,36 @@
 using dbn_t = dll::dbn_desc<dll::dbn_layers<
         //First RBM
           dll::rbm_desc<
-              Features * N
-            , 500               //Number of hidden units
+              Features * N              // Number of input features
+            , 500                       // Number of hidden units
             , dll::momentum
             , dll::batch_size<25>
-            , dll::parallel // Comment this line to use only 1 thread
+            , dll::parallel             // Comment this line to use only 1 thread (only pretraining)
             , dll::init_weights
             , dll::weight_decay<>
             , dll::visible<dll::unit_type::GAUSSIAN>
         >::rbm_t
         //Second RBM
         , dll::rbm_desc<
-            500, 200,
-            dll::momentum,
-            dll::batch_size<25>
+            500, 200
+            , dll::momentum,            // Use momentum during training
+            , dll::parallel             // Comment this line to use only 1 thread (only pretraining)
+            , dll::batch_size<25>
         >::rbm_t
         //Third RBM
         , dll::rbm_desc<
-            200, 10,
-            dll::momentum,
-            dll::batch_size<25>,
-            dll::hidden<dll::unit_type::SOFTMAX>
+            200
+            , 10                        //This is the number of labels
+            , dll::momentum
+            , dll::batch_size<25>
+            , dll::hidden<dll::unit_type::SOFTMAX>
         >::rbm_t>
     , dll::memory                       //Reduce memory consumption of the DBN (by using lazy iterators)
     , dll::parallel                     //Allow the DBN to use threads
     , dll::batch_size<1>                //Save some file readings
-    , dll::trainer<dll::sgd_trainer>    //Use SGD
-    , dll::momentum                     //Use momentum for SGD
-    , dll::weight_decay<>               //Use L2 weight decay for SGD
+    //, dll::trainer<dll::sgd_trainer>    //Use SGD
+    //, dll::momentum                     //Use momentum for SGD
+    //, dll::weight_decay<>               //Use L2 weight decay for SGD
     >::dbn_t;
 
 namespace {
@@ -87,7 +89,7 @@ int main(int argc, char* argv[]){
 
     //1.2 Configuration of the fine-tuning
 
-    dbn->learning_rate = 0.05;
+    dbn->learning_rate = 0.1;
 
     //2. Read dataset
 
@@ -133,14 +135,14 @@ int main(int argc, char* argv[]){
         auto ft_error = dbn->fine_tune(
             it, end, lit, lend,
             50,                   //Number of epochs
-            50);                  //Size of a mini-batch
+            100);                  //Size of a mini-batch
 
         std::cout << "Fine-tuning error: " << ft_error << std::endl;
     } else {
         auto ft_error = dbn->fine_tune(
             ft_samples, ft_labels,
             50,                   //Number of epochs
-            50);                  //Size of a mini-batch
+            100);                  //Size of a mini-batch
 
         std::cout << "Fine-tuning error: " << ft_error << std::endl;
     }
