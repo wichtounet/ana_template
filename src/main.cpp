@@ -35,7 +35,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
         //Second RBM
         , dll::rbm_desc<
             500, 200
-            , dll::momentum,            // Use momentum during training
+            , dll::momentum             // Use momentum during training
             , dll::parallel             // Comment this line to use only 1 thread (only pretraining)
             , dll::batch_size<25>
         >::rbm_t
@@ -46,8 +46,8 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
             , dll::momentum
             , dll::batch_size<25>
             , dll::hidden<dll::unit_type::SOFTMAX>
-        >::rbm_t>
-    , dll::memory                       //Reduce memory consumption of the DBN (by using lazy iterators)
+        >::rbm_t>,
+      dll::memory                       //Reduce memory consumption of the DBN (by using lazy iterators)
     , dll::parallel                     //Allow the DBN to use threads
     , dll::batch_size<1>                //Save some file readings
     //, dll::trainer<dll::sgd_trainer>    //Use SGD
