@@ -17,6 +17,8 @@
 
 namespace {
 
+constexpr const bool verbose = false;
+
 std::string remove_extension(const std::string& file, const std::vector<std::string>& extensions){
     for(auto& extension : extensions){
         auto extension_length = extension.size();
@@ -38,7 +40,9 @@ std::string remove_extension(const std::string& file, const std::vector<std::str
 std::unordered_map<std::string, std::size_t> mapper;
 
 void ana::read_labels(const std::string& file, std::vector<std::size_t>& labels){
-    std::cout << "Read labels from file \"" << file << "\"" << std::endl;
+    if(verbose){
+        std::cout << "Read labels from file \"" << file << "\"" << std::endl;
+    }
 
     std::vector<std::size_t> raw_labels;
 
@@ -53,7 +57,9 @@ void ana::read_labels(const std::string& file, std::vector<std::size_t>& labels)
         raw_labels.push_back(mapper[line]);
     }
 
-    std::cout << raw_labels.size() << " raw labels were read" << std::endl;
+    if(verbose){
+        std::cout << raw_labels.size() << " raw labels were read" << std::endl;
+    }
 
     static constexpr const std::size_t Left = (N - 1) / 2;
     static constexpr const std::size_t Right = (N - 1) / 2;
@@ -62,11 +68,15 @@ void ana::read_labels(const std::string& file, std::vector<std::size_t>& labels)
         labels.push_back(raw_labels[i]);
     }
 
-    std::cout << labels.size() << " window labels were read" << std::endl;
+    if(verbose){
+        std::cout << labels.size() << " window labels were read" << std::endl;
+    }
 }
 
 void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samples){
-    std::cout << "Read samples from file \"" << file << "\"" << std::endl;
+    if(verbose){
+        std::cout << "Read samples from file \"" << file << "\"" << std::endl;
+    }
 
     std::vector<std::vector<float>> raw_samples;
 
@@ -86,7 +96,9 @@ void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samp
         raw_samples.push_back(std::move(sample));
     }
 
-    std::cout << raw_samples.size() << " raw samples were read" << std::endl;
+    if(verbose){
+        std::cout << raw_samples.size() << " raw samples were read" << std::endl;
+    }
 
     for(std::size_t i = 0; i < Features; ++i){
         // Compute the mean
@@ -95,6 +107,8 @@ void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samp
         for(auto& sample : raw_samples){
             mean += sample[i];
         }
+
+        mean /= raw_samples.size();
 
         //Normalize to zero-mean
 
@@ -136,7 +150,9 @@ void ana::read_samples(const std::string& file, std::vector<ana::sample_t>& samp
         samples.push_back(std::move(sample));
     }
 
-    std::cout << samples.size() << " window samples were read" << std::endl;
+    if(verbose){
+        std::cout << samples.size() << " window samples were read" << std::endl;
+    }
 }
 
 std::pair<std::vector<std::string>, std::vector<std::string>> ana::get_paired_files(const std::string& ft_samples_file, const std::string& ft_labels_file){
