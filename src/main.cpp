@@ -42,7 +42,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
         //Third RBM
         , dll::rbm_desc<
             200
-            , 10                        //This is the number of labels
+            , 42                        //This is the number of labels
             , dll::momentum
             , dll::batch_size<25>
             , dll::hidden<dll::unit_type::SOFTMAX>
@@ -50,28 +50,38 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
       dll::memory                       //Reduce memory consumption of the DBN (by using lazy iterators)
     , dll::parallel                     //Allow the DBN to use threads
     , dll::batch_size<1>                //Save some file readings
-    //, dll::trainer<dll::sgd_trainer>    //Use SGD
+    //, dll::trainer<dll::sgd_trainer>    //Use SGD in place of CG
     //, dll::momentum                     //Use momentum for SGD
     //, dll::weight_decay<>               //Use L2 weight decay for SGD
     >::dbn_t;
 
-namespace {
+namespace ana {
 
 std::size_t count_distinct(std::vector<std::size_t> v){
     std::sort(v.begin(), v.end());
     return std::distance(v.begin(), std::unique(v.begin(), v.end()));
 }
 
-} //end of anonymous namespace
+template<typename DBN>
+void generate_features(DBN& dbn, const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file);
+
+} //end of ana namespace
 
 int main(int argc, char* argv[]){
-    if(argc < 4){
+    if(argc < 5){
         std::cout << "Not enough arguments" << std::endl;
+        return 1;
     }
 
-    std::string pt_samples_file(argv[1]);
-    std::string ft_samples_file(argv[2]);
-    std::string ft_labels_file(argv[3]);
+    std::string action(argv[1]);
+    std::string pt_samples_file(argv[2]);
+    std::string ft_samples_file(argv[3]);
+    std::string ft_labels_file(argv[4]);
+
+    if(!(action == "train" || action == "feat" || action == "train_feat")){
+        std::cout << "Invalid action :" << action << std::endl;
+        return 2;
+    }
 
     //1. Create the DBN
 
@@ -79,80 +89,148 @@ int main(int argc, char* argv[]){
 
     //1.1 Configuration of the pretraining
 
-    //dbn->layer<0>().learning_rate = 0.1;
-    dbn->layer<0>().initial_momentum = 0.9;
-    dbn->layer<0>().final_momentum = 0.9;
-    //dbn->layer<1>().learning_rate = 0.1;
-    dbn->layer<1>().initial_momentum = 0.9;
-    dbn->layer<1>().final_momentum = 0.9;
+    //dbn->layer_get<0>().learning_rate *= 0.1;
+    //dbn->layer_get<0>().initial_momentum = 0.9;
+    //dbn->layer_get<0>().final_momentum = 0.9;
+
+    dbn->layer_get<1>().learning_rate = 0.05;
+    dbn->layer_get<1>().initial_momentum = 0.9;
+    dbn->layer_get<1>().final_momentum = 0.9;
     //...
 
     //1.2 Configuration of the fine-tuning
 
-    dbn->learning_rate = 0.1;
+    dbn->learning_rate = 0.07;
+    dbn->initial_momentum = 0.9;
 
     //2. Read dataset
 
-    std::vector<ana::sample_t> pt_samples;       //The pretraining samples
-    std::vector<ana::sample_t> ft_samples;       //The finetuning samples
-    std::vector<std::size_t> ft_labels;          //The finetuning labels
+    if(action == "train" || action == "train_feat"){
+        std::vector<ana::sample_t> pt_samples;       //The pretraining samples
+        std::vector<ana::sample_t> ft_samples;       //The finetuning samples
+        std::vector<std::size_t> ft_labels;          //The finetuning labels
 
-    ana::read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels, lazy_pt, lazy_ft);
+        ana::read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels, lazy_pt, lazy_ft);
 
-    auto labels = count_distinct(ft_labels);  //Number of labels
+        std::cout << "There are " << ana::count_distinct(ft_labels) << " different labels" << std::endl;
 
-    std::cout << "There are " << labels << " different labels" << std::endl;
+        //3. Train the DBN layers for N epochs
 
-    //3. Train the DBN layers for N epochs
+        if(lazy_pt){
+            std::vector<std::string> feature_extension{"feat"};
+            auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
 
-    if(lazy_pt){
-        std::vector<std::string> feature_extension{"feat"};
-        auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
+            ana::sample_iterator it(pt_samples_files);
+            ana::sample_iterator end(pt_samples_files, pt_samples_files.size());
 
-        ana::sample_iterator it(pt_samples_files);
-        ana::sample_iterator end(pt_samples_files, pt_samples_files.size());
+            dbn->pretrain(it, end, 15);
+        } else {
+            dbn->pretrain(ft_samples, 50);
+        }
 
-        dbn->pretrain(it, end, 10);
-    } else {
-        dbn->pretrain(pt_samples, 10);
+        //4. Fine tune the DBN for M epochs
+
+        if(lazy_ft){
+            std::vector<std::string> samples_files;
+            std::vector<std::string> labels_files;
+
+            //Collect the paired files
+            std::tie(samples_files, labels_files) = ana::get_paired_files(ft_samples_file, ft_labels_file);
+
+            ana::sample_iterator it(samples_files);
+            ana::sample_iterator end(samples_files, samples_files.size());
+
+            ana::label_iterator lit(labels_files);
+            ana::label_iterator lend(labels_files, labels_files.size());
+
+            auto ft_error = dbn->fine_tune(
+                it, end, lit, lend,
+                50,                   //Number of epochs
+                100);                  //Size of a mini-batch
+
+            std::cout << "Fine-tuning error: " << ft_error << std::endl;
+        } else {
+            auto ft_error = dbn->fine_tune(
+                ft_samples, ft_labels,
+                50,                   //Number of epochs
+                10);                  //Size of a mini-batch
+
+            std::cout << "Fine-tuning error: " << ft_error << std::endl;
+        }
+
+        //5. Store the file if you want to save it for later
+
+        dbn->store("file.dat"); //Store to file
+
+        if(action == "train_feat"){
+            ana::generate_features(*dbn, pt_samples_file, ft_samples_file, ft_labels_file);
+        }
+    } else if(action == "feat"){
+        dbn->load("file.dat"); //Load from file
+
+        ana::generate_features(*dbn, pt_samples_file, ft_samples_file, ft_labels_file);
     }
-
-    //4. Fine tune the DBN for M epochs
-
-    if(lazy_ft){
-        std::vector<std::string> samples_files;
-        std::vector<std::string> labels_files;
-
-        //Collect the paired files
-        std::tie(samples_files, labels_files) = ana::get_paired_files(ft_samples_file, ft_labels_file);
-
-        ana::sample_iterator it(samples_files);
-        ana::sample_iterator end(samples_files, samples_files.size());
-
-        ana::label_iterator lit(labels_files);
-        ana::label_iterator lend(labels_files, labels_files.size());
-
-        auto ft_error = dbn->fine_tune(
-            it, end, lit, lend,
-            50,                   //Number of epochs
-            100);                  //Size of a mini-batch
-
-        std::cout << "Fine-tuning error: " << ft_error << std::endl;
-    } else {
-        auto ft_error = dbn->fine_tune(
-            ft_samples, ft_labels,
-            50,                   //Number of epochs
-            100);                  //Size of a mini-batch
-
-        std::cout << "Fine-tuning error: " << ft_error << std::endl;
-    }
-
-    //5. Store the file if you want to save it for later
-
-    dbn->store("file.dat"); //Store to file
 
     return 0;
 }
+
+namespace ana {
+
+template<std::size_t I, typename DBN, cpp_enable_if((I == DBN::layers))>
+void generate_features_layer(DBN& dbn, const std::vector<ana::sample_t>& samples, const std::string& file){
+    //Cool
+}
+
+template<std::size_t I, typename DBN, cpp_enable_if((I < DBN::layers))>
+void generate_features_layer(DBN& dbn, const std::vector<ana::sample_t>& samples, const std::string& file){
+    std::string target_file = std::string(file.begin(), file.end() - 4) + std::to_string(I) + ".bnf";
+
+    std::ofstream out(target_file);
+
+    for(auto& sample : samples){
+        auto features = dbn.template activation_probabilities_sub<I>(sample);
+
+        for(auto& feature : features){
+            out <<  feature << ",";
+        }
+
+        out << '\n';
+    }
+
+    std::cout << '.';
+
+    //Generate features for the next layer
+    generate_features_layer<I+1>(dbn, samples, file);
+}
+
+template<typename DBN>
+void generate_features(DBN& dbn, const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file){
+    std::vector<std::string> feature_extension{"feat"};
+    std::vector<std::string> label_extension{"framelab", "3phnlab"};
+
+    auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
+
+    for(auto& file : pt_samples_files){
+        std::vector<ana::sample_t> samples;
+        ana::read_samples(file, samples);
+
+        generate_features_layer<0>(dbn, samples, file);
+    }
+
+    std::vector<std::string> samples_files;
+    std::vector<std::string> labels_files;
+
+    std::tie(samples_files, labels_files) = ana::get_paired_files(ft_samples_file, ft_labels_file);
+
+    for(auto& file : samples_files){
+        std::vector<ana::sample_t> samples;
+        ana::read_samples(file, samples);
+
+        generate_features_layer<0>(dbn, samples, file);
+    }
+}
+
+} //end of ana namespace
 
 std::string ana::sample_iterator::cached;
 std::vector<ana::sample_t> ana::sample_iterator::cache;
