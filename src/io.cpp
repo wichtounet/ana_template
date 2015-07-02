@@ -54,7 +54,9 @@ void handle(const std::string& file, std::vector<std::string>& files, const std:
             if(ends_with(line, extension)){
                 files.push_back(line);
             } else {
-                printf("error: 2: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+                if(!ends_with(line, {"bnf"})){
+                    printf("error: 2: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());
+                }
             }
         } else {
             printf("error: 3: The file \"%s\" contains an invalid entry (\"%s\")\n", file.c_str(), line.c_str());

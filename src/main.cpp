@@ -163,11 +163,13 @@ int main(int argc, char* argv[]){
         dbn->store("file.dat"); //Store to file
 
         if(action == "train_feat"){
+            std::cout << "Generate features" << std::endl;
             ana::generate_features(*dbn, pt_samples_file, ft_samples_file, ft_labels_file);
         }
     } else if(action == "feat"){
         dbn->load("file.dat"); //Load from file
 
+        std::cout << "Generate features" << std::endl;
         ana::generate_features(*dbn, pt_samples_file, ft_samples_file, ft_labels_file);
     }
 
@@ -198,6 +200,7 @@ void generate_features_layer(DBN& dbn, const std::vector<ana::sample_t>& samples
     }
 
     std::cout << '.';
+    std::cout.flush();
 
     //Generate features for the next layer
     generate_features_layer<I+1>(dbn, samples, file);
