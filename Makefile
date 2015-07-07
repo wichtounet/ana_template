@@ -2,8 +2,13 @@ default: release
 
 .PHONY: default release debug all clean
 
+ifndef CXX
 CXX=g++-4.9
+endif
+
+ifndef LD
 LD=g++-4.9
+endif
 
 include make-utils/flags.mk
 include make-utils/cpp-utils.mk
