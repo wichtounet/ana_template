@@ -8,7 +8,7 @@
 #include "dll/rbm.hpp"
 #include "dll/dbn.hpp"
 #include "dll/test.hpp"
-#include "dll/stochastic_gradient_descent.hpp"
+#include "dll/dense_stochastic_gradient_descent.hpp"
 
 #include "cpp_utils/data.hpp"
 
@@ -27,7 +27,6 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
             , 500                       // Number of hidden units
             , dll::momentum
             , dll::batch_size<25>
-            , dll::parallel             // Comment this line to use only 1 thread (only pretraining)
             , dll::init_weights
             , dll::weight_decay<>
             , dll::visible<dll::unit_type::GAUSSIAN>
@@ -36,7 +35,6 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
         , dll::rbm_desc<
             500, 200
             , dll::momentum             // Use momentum during training
-            , dll::parallel             // Comment this line to use only 1 thread (only pretraining)
             , dll::batch_size<25>
         >::rbm_t
         //Third RBM
@@ -47,12 +45,12 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
             , dll::batch_size<25>
             , dll::hidden<dll::unit_type::SOFTMAX>
         >::rbm_t>,
-      dll::memory                       //Reduce memory consumption of the DBN (by using lazy iterators)
-    , dll::parallel                     //Allow the DBN to use threads
-    , dll::batch_size<1>                //Save some file readings
-    //, dll::trainer<dll::sgd_trainer>    //Use SGD in place of CG
-    //, dll::momentum                     //Use momentum for SGD
-    //, dll::weight_decay<>               //Use L2 weight decay for SGD
+      //dll::memory                               //Reduce memory consumption of the DBN (by using lazy iterators)
+    /*,*/ dll::big_batch_size<1>                    //Save some file readings
+    , dll::batch_size<100>                      //Mini-batch for SGD
+    , dll::trainer<dll::dense_sgd_trainer>      //Use SGD in place of CG
+    , dll::momentum                             //Use momentum for SGD
+    , dll::weight_decay<>                       //Use L2 weight decay for SGD
     >::dbn_t;
 
 namespace ana {
@@ -116,6 +114,8 @@ int main(int argc, char* argv[]){
 
         //3. Train the DBN layers for N epochs
 
+        std::size_t pt_epochs = 10;
+
         if(lazy_pt){
             std::vector<std::string> feature_extension{"feat"};
             auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
@@ -123,12 +123,14 @@ int main(int argc, char* argv[]){
             ana::sample_iterator it(pt_samples_files);
             ana::sample_iterator end(pt_samples_files, pt_samples_files.size());
 
-            dbn->pretrain(it, end, 15);
+            dbn->pretrain(it, end, pt_epochs);
         } else {
-            dbn->pretrain(ft_samples, 50);
+            dbn->pretrain(ft_samples, pt_epochs);
         }
 
         //4. Fine tune the DBN for M epochs
+
+        std::size_t ft_epochs = 10;
 
         if(lazy_ft){
             std::vector<std::string> samples_files;
@@ -143,17 +145,11 @@ int main(int argc, char* argv[]){
             ana::label_iterator lit(labels_files);
             ana::label_iterator lend(labels_files, labels_files.size());
 
-            auto ft_error = dbn->fine_tune(
-                it, end, lit, lend,
-                50,                   //Number of epochs
-                100);                  //Size of a mini-batch
+            auto ft_error = dbn->fine_tune(it, end, lit, lend, ft_epochs);
 
             std::cout << "Fine-tuning error: " << ft_error << std::endl;
         } else {
-            auto ft_error = dbn->fine_tune(
-                ft_samples, ft_labels,
-                50,                   //Number of epochs
-                10);                  //Size of a mini-batch
+            auto ft_error = dbn->fine_tune(ft_samples, ft_labels, ft_epochs);
 
             std::cout << "Fine-tuning error: " << ft_error << std::endl;
         }
@@ -179,7 +175,7 @@ int main(int argc, char* argv[]){
 namespace ana {
 
 template<std::size_t I, typename DBN, cpp_enable_if((I == DBN::layers))>
-void generate_features_layer(DBN& dbn, const std::vector<ana::sample_t>& samples, const std::string& file){
+void generate_features_layer(DBN&, const std::vector<ana::sample_t>&, const std::string&){
     //Cool
 }
 
