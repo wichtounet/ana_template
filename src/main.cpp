@@ -45,8 +45,8 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
             , dll::batch_size<25>
             , dll::hidden<dll::unit_type::SOFTMAX>
         >::rbm_t>,
-      //dll::memory                               //Reduce memory consumption of the DBN (by using lazy iterators)
-    /*,*/ dll::big_batch_size<1>                    //Save some file readings
+      dll::memory                               //Reduce memory consumption of the DBN (by using lazy iterators)
+    , dll::big_batch_size<1>                    //Save some file readings
     , dll::batch_size<100>                      //Mini-batch for SGD
     , dll::trainer<dll::dense_sgd_trainer>      //Use SGD in place of CG
     , dll::momentum                             //Use momentum for SGD
