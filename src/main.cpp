@@ -26,8 +26,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
               Features * N              // Number of input features
             , 500                       // Number of hidden units
             , dll::momentum
-            , dll::batch_size<25>
-            , dll::init_weights
+            , dll::batch_size<50>
             , dll::weight_decay<>
             , dll::visible<dll::unit_type::GAUSSIAN>
         >::rbm_t
@@ -35,18 +34,18 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
         , dll::rbm_desc<
             500, 200
             , dll::momentum             // Use momentum during training
-            , dll::batch_size<25>
+            , dll::batch_size<50>
         >::rbm_t
         //Third RBM
         , dll::rbm_desc<
             200
             , 42                        //This is the number of labels
             , dll::momentum
-            , dll::batch_size<25>
+            , dll::batch_size<50>
             , dll::hidden<dll::unit_type::SOFTMAX>
         >::rbm_t>,
       dll::memory                               //Reduce memory consumption of the DBN (by using lazy iterators)
-    , dll::big_batch_size<1>                    //Save some file readings
+    , dll::big_batch_size<100>                  //Save some file readings
     , dll::batch_size<100>                      //Mini-batch for SGD
     , dll::trainer<dll::dense_sgd_trainer>      //Use SGD in place of CG
     , dll::momentum                             //Use momentum for SGD
