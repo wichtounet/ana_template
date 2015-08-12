@@ -18,7 +18,7 @@ LD_FLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -ljpeg -pthread
 
 CXX_FLAGS += -DETL_VECTORIZE_FULL
 
-CXX_FLAGS += -DETL_MKL_MODE $(shell pkg-config --cflags mkl)
+CXX_FLAGS += -DETL_MKL_MODE $(shell pkg-config --cflags mkl) -Wno-tautological-compare
 LD_FLAGS += $(shell pkg-config --libs mkl)
 
 $(eval $(call auto_folder_compile,src))
