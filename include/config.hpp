@@ -16,12 +16,15 @@ static constexpr const std::size_t Stride = 11;
 //at the beginning of the program but rather only when necessary
 //This allow pretraining to work on arbitrary large dataset. However, this means that each data file
 //will be read and normalized at least once each epoch. The overhead may be very large.
-static constexpr const bool lazy_pt = true;
+static constexpr const bool lazy_pt = false;
 
 //Putting lazy_ft = true uses lazy iterators for fine-tuning, in which case, memory will be not be read at
 //once at the beginning of the program but rather only when necessary
 //This allow fine-tuning to work on arbitrary large dataset. However, this means that each data file
 //will be read and normalized at least once each epoch. The overhead may be very large.
-static constexpr const bool lazy_ft = true;
+static constexpr const bool lazy_ft = false;
+
+//Putting drop_sil = true will drop all <sil> from training
+static constexpr const bool drop_sil = false;
 
 #endif
