@@ -17,7 +17,8 @@
 namespace ana {
 
 struct sample_iterator : std::iterator<std::input_iterator_tag, ana::sample_t> {
-    const std::vector<std::string>& file_names;
+    const ana::paired_files_t& file_names;
+    const bool pt;
 
     std::size_t current_file = 0;
     std::vector<ana::sample_t> samples;
@@ -27,24 +28,24 @@ struct sample_iterator : std::iterator<std::input_iterator_tag, ana::sample_t> {
     static std::vector<ana::sample_t> cache;
     static std::mutex m;
 
-    sample_iterator(const std::vector<std::string>& file_names, std::size_t i = 0)
-            : file_names(file_names), current_file(i) {
-        if(current_file < file_names.size()){
-            read_samples(file_names[current_file], samples);
+    sample_iterator(const ana::paired_files_t& file_names, bool pt, std::size_t i = 0)
+            : file_names(file_names), pt(pt), current_file(i) {
+        if(current_file < file_names.first.size()){
+            read_samples(pt, file_names, file_names.first[current_file], samples);
         }
     }
 
     sample_iterator(const sample_iterator& rhs) = default;
     sample_iterator& operator=(const sample_iterator& rhs) = default;
 
-    static void read_samples(const std::string& name, std::vector<ana::sample_t>& samples){
+    static void read_samples(bool pt, const ana::paired_files_t& file_names, const std::string& name, std::vector<ana::sample_t>& samples){
         std::unique_lock<std::mutex> lock(m);
 
         if(!cache.empty() && cached == name){
             samples = cache;
         } else {
             cache.clear();
-            ana::read_samples(name, cache);
+            ana::read_samples(file_names, name, cache, pt);
 
             samples = cache;
             cached = name;
@@ -52,7 +53,7 @@ struct sample_iterator : std::iterator<std::input_iterator_tag, ana::sample_t> {
     }
 
     bool operator==(const sample_iterator& rhs){
-        if(current_file == file_names.size() && current_file == rhs.current_file){
+        if(current_file == file_names.first.size() && current_file == rhs.current_file){
             return true;
         } else {
             return current_file == rhs.current_file && current_sample == rhs.current_sample;
@@ -76,8 +77,8 @@ struct sample_iterator : std::iterator<std::input_iterator_tag, ana::sample_t> {
             ++current_file;
             current_sample = 0;
 
-            if(current_file < file_names.size()){
-                read_samples(file_names[current_file], samples);
+            if(current_file < file_names.first.size()){
+                read_samples(pt, file_names, file_names.first[current_file], samples);
             }
         } else {
             ++current_sample;

@@ -102,12 +102,15 @@ int main(int argc, char* argv[]){
 
     //2. Read dataset
 
+    //Collect the paired files
+    auto paired_files = ana::get_paired_files(ft_samples_file, ft_labels_file);
+
     if(action == "train" || action == "train_feat"){
         std::vector<ana::sample_t> pt_samples;       //The pretraining samples
         std::vector<ana::sample_t> ft_samples;       //The finetuning samples
         std::vector<std::size_t> ft_labels;          //The finetuning labels
 
-        ana::read_data(pt_samples_file, ft_samples_file, ft_labels_file, pt_samples, ft_samples, ft_labels, lazy_pt, lazy_ft);
+        ana::read_data(pt_samples_file, paired_files, pt_samples, ft_samples, ft_labels, lazy_pt, lazy_ft);
 
         std::cout << "There are " << ana::count_distinct(ft_labels) << " different labels" << std::endl;
 
@@ -119,8 +122,8 @@ int main(int argc, char* argv[]){
             std::vector<std::string> feature_extension{"feat"};
             auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
 
-            ana::sample_iterator it(pt_samples_files);
-            ana::sample_iterator end(pt_samples_files, pt_samples_files.size());
+            ana::sample_iterator it(paired_files, false);
+            ana::sample_iterator end(paired_files, false, pt_samples_files.size());
 
             dbn->pretrain(it, end, pt_epochs);
         } else {
@@ -129,20 +132,15 @@ int main(int argc, char* argv[]){
 
         //4. Fine tune the DBN for M epochs
 
-        std::size_t ft_epochs = 10;
+        std::size_t ft_epochs = 20;
 
         if(lazy_ft){
-            std::vector<std::string> samples_files;
-            std::vector<std::string> labels_files;
 
-            //Collect the paired files
-            std::tie(samples_files, labels_files) = ana::get_paired_files(ft_samples_file, ft_labels_file);
+            ana::sample_iterator it(paired_files, true);
+            ana::sample_iterator end(paired_files, true, paired_files.first.size());
 
-            ana::sample_iterator it(samples_files);
-            ana::sample_iterator end(samples_files, samples_files.size());
-
-            ana::label_iterator lit(labels_files);
-            ana::label_iterator lend(labels_files, labels_files.size());
+            ana::label_iterator lit(paired_files);
+            ana::label_iterator lend(paired_files, paired_files.first.size());
 
             auto ft_error = dbn->fine_tune(it, end, lit, lend, ft_epochs);
 
@@ -208,21 +206,18 @@ void generate_features(DBN& dbn, const std::string& pt_samples_file, const std::
 
     auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
 
+    auto paired_files = ana::get_paired_files(ft_samples_file, ft_labels_file);
+
     for(auto& file : pt_samples_files){
         std::vector<ana::sample_t> samples;
-        ana::read_samples(file, samples);
+        ana::read_samples(paired_files, file, samples, false);
 
         generate_features_layer<0>(dbn, samples, file);
     }
 
-    std::vector<std::string> samples_files;
-    std::vector<std::string> labels_files;
-
-    std::tie(samples_files, labels_files) = ana::get_paired_files(ft_samples_file, ft_labels_file);
-
-    for(auto& file : samples_files){
+    for(auto& file : paired_files.first){
         std::vector<ana::sample_t> samples;
-        ana::read_samples(file, samples);
+        ana::read_samples(paired_files, file, samples, false);
 
         generate_features_layer<0>(dbn, samples, file);
     }

@@ -25,6 +25,6 @@ static constexpr const bool lazy_pt = false;
 static constexpr const bool lazy_ft = false;
 
 //Putting drop_sil = true will drop all <sil> from training
-static constexpr const bool drop_sil = false;
+static constexpr const bool drop_sil_windows = true;
 
 #endif

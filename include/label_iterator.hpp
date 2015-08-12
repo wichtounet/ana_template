@@ -17,7 +17,7 @@
 namespace ana {
 
 struct label_iterator : std::iterator<std::input_iterator_tag, ana::label_t> {
-    const std::vector<std::string>& file_names;
+    const ana::paired_files_t& file_names;
 
     std::size_t current_file = 0;
     std::vector<ana::label_t> labels;
@@ -27,10 +27,10 @@ struct label_iterator : std::iterator<std::input_iterator_tag, ana::label_t> {
     static std::vector<ana::label_t> cache;
     static std::mutex m;
 
-    label_iterator(const std::vector<std::string>& file_names, std::size_t i = 0)
+    label_iterator(const ana::paired_files_t& file_names, std::size_t i = 0)
             : file_names(file_names), current_file(i) {
-        if(current_file < file_names.size()){
-            read_labels(file_names[current_file], labels);
+        if(current_file < file_names.second.size()){
+            read_labels(file_names.second[current_file], labels);
         }
     }
 
@@ -52,7 +52,7 @@ struct label_iterator : std::iterator<std::input_iterator_tag, ana::label_t> {
     }
 
     bool operator==(const label_iterator& rhs){
-        if(current_file == file_names.size() && current_file == rhs.current_file){
+        if(current_file == file_names.second.size() && current_file == rhs.current_file){
             return true;
         } else {
             return current_file == rhs.current_file && current_label == rhs.current_label;
@@ -76,8 +76,8 @@ struct label_iterator : std::iterator<std::input_iterator_tag, ana::label_t> {
             ++current_file;
             current_label = 0;
 
-            if(current_file < file_names.size()){
-                read_labels(file_names[current_file], labels);
+            if(current_file < file_names.second.size()){
+                read_labels(file_names.second[current_file], labels);
             }
         } else {
             ++current_label;
