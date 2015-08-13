@@ -39,7 +39,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
         //Third RBM
         , dll::rbm_desc<
             200
-            , 41                        //This is the number of labels
+            , 42                        //This is the number of labels
             , dll::momentum
             , dll::batch_size<50>
             , dll::hidden<dll::unit_type::SOFTMAX>
@@ -53,6 +53,9 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
     >::dbn_t;
 
 namespace ana {
+
+template<typename DBN>
+void test(DBN& dbn, paired_files_t& paired_files, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels);
 
 std::size_t count_distinct(std::vector<std::size_t> v){
     std::sort(v.begin(), v.end());
@@ -75,7 +78,7 @@ int main(int argc, char* argv[]){
     std::string ft_samples_file(argv[3]);
     std::string ft_labels_file(argv[4]);
 
-    if(!(action == "train" || action == "feat" || action == "train_feat" || action == "train_test")){
+    if(!(action == "train" || action == "feat" || action == "test" || action == "train_feat" || action == "train_test")){
         std::cout << "Invalid action :" << action << std::endl;
         return 2;
     }
@@ -159,78 +162,95 @@ int main(int argc, char* argv[]){
             std::cout << "Generate features" << std::endl;
             ana::generate_features(*dbn, pt_samples_file, ft_samples_file, ft_labels_file);
         } else if(action == "train_test"){
-            std::cout << "\nTest\n";
-
-            std::vector<std::size_t> errors;
-            std::size_t errors_tot = 0;
-            std::size_t total = 0;
-
-            auto rmap = ana::reverse_mapper();
-
-            if(lazy_ft){
-                ana::sample_iterator it(paired_files, pt_samples_files, false);
-                ana::sample_iterator end(paired_files, pt_samples_files, false, paired_files.first.size());
-
-                ana::label_iterator lit(paired_files);
-
-                while(it != end){
-                    auto& samples = *it;
-                    auto& label = *lit;
-
-                    auto p = dbn->predict(samples);
-
-                    if(p != label){
-                        if(label >= errors.size()){
-                            errors.resize(label+1);
-                        }
-
-                        ++errors[label];
-                        ++errors_tot;
-                    }
-
-                    ++total;
-
-                    ++it;
-                    ++lit;
-                }
-            } else {
-                total = ft_samples.size();
-
-                auto labels = ana::count_distinct(ft_labels);
-                errors.resize(labels);
-
-                for(std::size_t i = 0; i < ft_samples.size(); ++i){
-                    auto& samples = ft_samples[i];
-                    auto& label = ft_labels[i];
-
-                    auto p = dbn->predict(samples);
-
-                    if(p != label){
-                        ++errors[label];
-                        ++errors_tot;
-                    //std::cout << p << ":" << label << std::endl;
-                    }
-                }
-            }
-
-            std::cout << "Accuracy: " << (total - errors_tot) / double(total) << std::endl;;
-            std::cout << "Errors: " << errors_tot << std::endl;;
-
-            for(std::size_t i = 0; i < errors.size(); ++i){
-                std::cout << rmap[i] << " " << errors[i] << std::endl;
-            }
+            ana::test(*dbn, paired_files, ft_samples, ft_labels);
         }
     } else if(action == "feat"){
         dbn->load("file.dat"); //Load from file
 
         std::cout << "Generate features" << std::endl;
         ana::generate_features(*dbn, pt_samples_file, ft_samples_file, ft_labels_file);
+    } else if(action == "test"){
+        dbn->load("file.dat"); //Load from file
+
+        std::vector<ana::sample_t> pt_samples;       //The pretraining samples
+        std::vector<ana::sample_t> ft_samples;       //The finetuning samples
+        std::vector<std::size_t> ft_labels;          //The finetuning labels
+
+        ana::read_data(pt_samples_file, paired_files, pt_samples, ft_samples, ft_labels, true, lazy_ft);
+
+        ana::test(*dbn, paired_files, ft_samples, ft_labels);
     }
 
     return 0;
 }
 
 namespace ana {
+
+template<typename DBN>
+void test(DBN& dbn, paired_files_t& paired_files, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels){
+    std::cout << "\nTest\n";
+
+    std::vector<std::string> pt_samples_files;
+
+    std::vector<std::size_t> errors;
+    std::size_t errors_tot = 0;
+    std::size_t total = 0;
+
+    auto rmap = ana::reverse_mapper();
+
+    if(lazy_ft){
+        ana::sample_iterator it(paired_files, pt_samples_files, false);
+        ana::sample_iterator end(paired_files, pt_samples_files, false, paired_files.first.size());
+
+        ana::label_iterator lit(paired_files);
+
+        while(it != end){
+            auto& samples = *it;
+            auto& label = *lit;
+
+            auto p = dbn.predict(samples);
+
+            if(p != label){
+                if(label >= errors.size()){
+                    errors.resize(label+1);
+                }
+
+                ++errors[label];
+                ++errors_tot;
+            }
+
+            ++total;
+
+            ++it;
+            ++lit;
+        }
+    } else {
+        total = ft_samples.size();
+
+        auto labels = ana::count_distinct(ft_labels);
+        errors.resize(labels);
+
+        for(std::size_t i = 0; i < ft_samples.size(); ++i){
+            auto& samples = ft_samples[i];
+            auto& label = ft_labels[i];
+
+            auto p = dbn.predict(samples);
+
+            if(p != label){
+                ++errors[label];
+                ++errors_tot;
+            //std::cout << p << ":" << label << std::endl;
+            }
+        }
+    }
+
+    std::cout << "Accuracy: " << (total - errors_tot) / double(total) << std::endl;;
+    std::cout << "Errors: " << errors_tot << std::endl;;
+
+    for(std::size_t i = 0; i < errors.size(); ++i){
+        std::cout << rmap[i] << " " << errors[i] << std::endl;
+    }
+}
 
 template<std::size_t I, typename DBN, cpp_enable_if((I == DBN::layers))>
 void generate_features_layer(DBN&, const std::vector<ana::sample_t>&, const std::string&){
