@@ -39,7 +39,7 @@ using dbn_t = dll::dbn_desc<dll::dbn_layers<
         //Third RBM
         , dll::rbm_desc<
             200
-            , 42                        //This is the number of labels
+            , 41                        //This is the number of labels
             , dll::momentum
             , dll::batch_size<50>
             , dll::hidden<dll::unit_type::SOFTMAX>
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]){
     std::string ft_samples_file(argv[3]);
     std::string ft_labels_file(argv[4]);
 
-    if(!(action == "train" || action == "feat" || action == "train_feat")){
+    if(!(action == "train" || action == "feat" || action == "train_feat" || action == "train_test")){
         std::cout << "Invalid action :" << action << std::endl;
         return 2;
     }
@@ -105,7 +105,11 @@ int main(int argc, char* argv[]){
     //Collect the paired files
     auto paired_files = ana::get_paired_files(ft_samples_file, ft_labels_file);
 
-    if(action == "train" || action == "train_feat"){
+    if(action == "train" || action == "train_feat" || action == "train_test"){
+        //Collection of files for pretraining
+        std::vector<std::string> feature_extension{"feat"};
+        auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
+
         std::vector<ana::sample_t> pt_samples;       //The pretraining samples
         std::vector<ana::sample_t> ft_samples;       //The finetuning samples
         std::vector<std::size_t> ft_labels;          //The finetuning labels
@@ -119,15 +123,12 @@ int main(int argc, char* argv[]){
         std::size_t pt_epochs = 10;
 
         if(lazy_pt){
-            std::vector<std::string> feature_extension{"feat"};
-            auto pt_samples_files = ana::get_files(pt_samples_file, feature_extension);
-
-            ana::sample_iterator it(paired_files, false);
-            ana::sample_iterator end(paired_files, false, pt_samples_files.size());
+            ana::sample_iterator it(paired_files, pt_samples_files, true);
+            ana::sample_iterator end(paired_files, pt_samples_files, true, pt_samples_files.size());
 
             dbn->pretrain(it, end, pt_epochs);
         } else {
-            dbn->pretrain(ft_samples, pt_epochs);
+            dbn->pretrain(pt_samples, pt_epochs);
         }
 
         //4. Fine tune the DBN for M epochs
@@ -135,9 +136,8 @@ int main(int argc, char* argv[]){
         std::size_t ft_epochs = 20;
 
         if(lazy_ft){
-
-            ana::sample_iterator it(paired_files, true);
-            ana::sample_iterator end(paired_files, true, paired_files.first.size());
+            ana::sample_iterator it(paired_files, pt_samples_files, false);
+            ana::sample_iterator end(paired_files, pt_samples_files, false, paired_files.first.size());
 
             ana::label_iterator lit(paired_files);
             ana::label_iterator lend(paired_files, paired_files.first.size());
@@ -158,6 +158,67 @@ int main(int argc, char* argv[]){
         if(action == "train_feat"){
             std::cout << "Generate features" << std::endl;
             ana::generate_features(*dbn, pt_samples_file, ft_samples_file, ft_labels_file);
+        } else if(action == "train_test"){
+            std::cout << "\nTest\n";
+
+            std::vector<std::size_t> errors;
+            std::size_t errors_tot = 0;
+            std::size_t total = 0;
+
+            auto rmap = ana::reverse_mapper();
+
+            if(lazy_ft){
+                ana::sample_iterator it(paired_files, pt_samples_files, false);
+                ana::sample_iterator end(paired_files, pt_samples_files, false, paired_files.first.size());
+
+                ana::label_iterator lit(paired_files);
+
+                while(it != end){
+                    auto& samples = *it;
+                    auto& label = *lit;
+
+                    auto p = dbn->predict(samples);
+
+                    if(p != label){
+                        if(label >= errors.size()){
+                            errors.resize(label+1);
+                        }
+
+                        ++errors[label];
+                        ++errors_tot;
+                    }
+
+                    ++total;
+
+                    ++it;
+                    ++lit;
+                }
+            } else {
+                total = ft_samples.size();
+
+                auto labels = ana::count_distinct(ft_labels);
+                errors.resize(labels);
+
+                for(std::size_t i = 0; i < ft_samples.size(); ++i){
+                    auto& samples = ft_samples[i];
+                    auto& label = ft_labels[i];
+
+                    auto p = dbn->predict(samples);
+
+                    if(p != label){
+                        ++errors[label];
+                        ++errors_tot;
+                    //std::cout << p << ":" << label << std::endl;
+                    }
+                }
+            }
+
+            std::cout << "Accuracy: " << (total - errors_tot) / double(total) << std::endl;;
+            std::cout << "Errors: " << errors_tot << std::endl;;
+
+            for(std::size_t i = 0; i < errors.size(); ++i){
+                std::cout << rmap[i] << " " << errors[i] << std::endl;
+            }
         }
     } else if(action == "feat"){
         dbn->load("file.dat"); //Load from file
@@ -210,25 +271,17 @@ void generate_features(DBN& dbn, const std::string& pt_samples_file, const std::
 
     for(auto& file : pt_samples_files){
         std::vector<ana::sample_t> samples;
-        ana::read_samples(paired_files, file, samples, false);
+        ana::read_samples(paired_files, file, samples, true);
 
         generate_features_layer<0>(dbn, samples, file);
     }
 
     for(auto& file : paired_files.first){
         std::vector<ana::sample_t> samples;
-        ana::read_samples(paired_files, file, samples, false);
+        ana::read_samples(paired_files, file, samples, true);
 
         generate_features_layer<0>(dbn, samples, file);
     }
 }
 
 } //end of ana namespace
-
-std::string ana::sample_iterator::cached;
-std::vector<ana::sample_t> ana::sample_iterator::cache;
-std::mutex ana::sample_iterator::m;
-
-std::string ana::label_iterator::cached;
-std::vector<ana::label_t> ana::label_iterator::cache;
-std::mutex ana::label_iterator::m;

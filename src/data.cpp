@@ -39,6 +39,16 @@ std::string remove_extension(const std::string& file, const std::vector<std::str
 
 std::unordered_map<std::string, std::size_t> mapper;
 
+std::unordered_map<std::size_t, std::string> ana::reverse_mapper(){
+    std::unordered_map<std::size_t, std::string> rmap;
+
+    for(auto& v : mapper){
+        rmap[v.second] = v.first;
+    }
+
+    return rmap;
+}
+
 void read_labels_str(const std::string& file, std::vector<std::string>& labels){
     if(verbose){
         std::cout << "Read labels from file \"" << file << "\"" << std::endl;
@@ -73,7 +83,8 @@ void ana::read_labels(const std::string& file, std::vector<std::size_t>& labels)
     for(auto& label : str_labels){
         if(!(drop_sil_windows && label == "sil")){
             if(!mapper.count(label)){
-                mapper[label] = mapper.size();
+                auto new_label = mapper.size();
+                mapper[label] = new_label;
             }
 
             labels.push_back(mapper[label]);

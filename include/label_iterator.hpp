@@ -23,10 +23,6 @@ struct label_iterator : std::iterator<std::input_iterator_tag, ana::label_t> {
     std::vector<ana::label_t> labels;
     std::size_t current_label = 0;
 
-    static std::string cached;
-    static std::vector<ana::label_t> cache;
-    static std::mutex m;
-
     label_iterator(const ana::paired_files_t& file_names, std::size_t i = 0)
             : file_names(file_names), current_file(i) {
         if(current_file < file_names.second.size()){
@@ -38,17 +34,8 @@ struct label_iterator : std::iterator<std::input_iterator_tag, ana::label_t> {
     label_iterator& operator=(const label_iterator& rhs) = default;
 
     static void read_labels(const std::string& name, std::vector<ana::label_t>& labels){
-        std::unique_lock<std::mutex> lock(m);
-
-        if(!cache.empty() && cached == name){
-            labels = cache;
-        } else {
-            cache.clear();
-            ana::read_labels(name, cache);
-
-            labels = cache;
-            cached = name;
-        }
+        labels.clear();
+        ana::read_labels(name, labels);
     }
 
     bool operator==(const label_iterator& rhs){

@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <unordered_map>
 
 #include "etl/etl.hpp"
 
@@ -28,6 +29,8 @@ void read_data(
     const std::string& pt_samples_file, const paired_files_t& ft_files,
     std::vector<sample_t>& pt_samples, std::vector<sample_t>& ft_samples, std::vector<std::size_t>& ft_labels,
     bool lazy_pretraining = false, bool lazy_fine_tuning = false);
+
+std::unordered_map<std::size_t, std::string> reverse_mapper();
 
 void read_samples(const paired_files_t& files, const std::string& file, std::vector<ana::sample_t>& samples, bool pt);
 void read_labels(const std::string& file, std::vector<std::size_t>& labels);
