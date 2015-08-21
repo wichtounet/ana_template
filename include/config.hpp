@@ -27,4 +27,7 @@ static constexpr const bool lazy_ft = true;
 //Putting drop_sil = true will drop all <sil> from training
 static constexpr const bool drop_sil_windows = false;
 
+static const std::string features_replace_source = "/home/wichtounet/datasets/ana";
+static const std::string features_replace_target = "/home/wichtounet/datasets/features";
+
 #endif

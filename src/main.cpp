@@ -4,6 +4,13 @@
 //=======================================================================
 
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "dll/rbm.hpp"
 #include "dll/dbn.hpp"
@@ -64,6 +71,8 @@ std::size_t count_distinct(std::vector<std::size_t> v){
 
 template<typename DBN>
 void generate_features(DBN& dbn, const std::string& pt_samples_file, const std::string& ft_samples_file, const std::string& ft_labels_file);
+
+void mkdir_p(const char *path);
 
 } //end of ana namespace
 
@@ -260,7 +269,19 @@ template<std::size_t I, typename DBN, cpp_enable_if((I < DBN::layers))>
 void generate_features_layer(DBN& dbn, const std::vector<ana::sample_t>& samples, const std::string& file){
     std::string target_file = std::string(file.begin(), file.end() - 4) + std::to_string(I) + ".bnf";
 
+    auto b = target_file.find(features_replace_source);
+    if(b != std::string::npos){
+        target_file.replace(b, b + features_replace_source.size(), features_replace_target);
+
+        std::string directory(target_file.begin(), target_file.begin() + target_file.rfind("/") + 1);
+        mkdir_p(directory.c_str());
+    }
+
     std::ofstream out(target_file);
+
+    if(!out.is_open()){
+        std::cout << target_file << " not ok" << std::endl;
+    }
 
     for(auto& sample : samples){
         auto features = dbn.template activation_probabilities_sub<I>(sample);
@@ -300,6 +321,33 @@ void generate_features(DBN& dbn, const std::string& pt_samples_file, const std::
         ana::read_samples(paired_files, file, samples, true);
 
         generate_features_layer<0>(dbn, samples, file);
+    }
+}
+
+void mkdir_p(const char *path){
+    char opath[1024];
+    char *p;
+    size_t len;
+
+    strncpy(opath, path, sizeof(opath));
+    len = strlen(opath);
+
+    if(opath[len - 1] == '/'){
+        opath[len - 1] = '\0';
+    }
+
+    for(p = opath; *p; p++){
+        if(*p == '/') {
+            *p = '\0';
+            if(access(opath, F_OK)){
+                mkdir(opath, S_IRWXU);
+            }
+            *p = '/';
+        }
+    }
+
+    if(access(opath, F_OK)){        /* if path is not terminated with / */
+        mkdir(opath, S_IRWXU);
     }
 }
 
