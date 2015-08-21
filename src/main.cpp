@@ -196,8 +196,6 @@ void test(DBN& dbn, paired_files_t& paired_files, std::vector<sample_t>& ft_samp
     std::size_t errors_tot = 0;
     std::size_t total = 0;
 
-    auto rmap = ana::reverse_mapper();
-
     if(lazy_ft){
         ana::sample_iterator it(paired_files, pt_samples_files, false);
         ana::sample_iterator end(paired_files, pt_samples_files, false, paired_files.first.size());
@@ -239,13 +237,14 @@ void test(DBN& dbn, paired_files_t& paired_files, std::vector<sample_t>& ft_samp
             if(p != label){
                 ++errors[label];
                 ++errors_tot;
-            //std::cout << p << ":" << label << std::endl;
             }
         }
     }
 
     std::cout << "Accuracy: " << (total - errors_tot) / double(total) << std::endl;;
     std::cout << "Errors: " << errors_tot << std::endl;;
+
+    auto rmap = ana::reverse_mapper();
 
     for(std::size_t i = 0; i < errors.size(); ++i){
         std::cout << rmap[i] << " " << errors[i] << std::endl;
